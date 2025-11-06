@@ -1,4 +1,14 @@
-CSC 480 Porject: Connect 4 AI
+# CSC 480 Porject: Connect 4 AI
+
+## Set Up
+- Make a new python virtual environment and activate it (optional)
+- Run `pip install -r requirements.txt`
+- Run `uvicorn main:app --reload --port 8000` to start the backend 
+- In a new terminal window navigate to the `connect-4-ai` directory
+- Run `npm install`
+- Run `npm run dev` to start the frontend
+
+
 - 1- Project Description.
 	- For our project we are making a Connect 4 bot that uses logic and the 
   state of the board to make the best decision. We will have different modes so the bot 
