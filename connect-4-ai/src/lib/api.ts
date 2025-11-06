@@ -9,31 +9,25 @@ export type Game = {
     legalMoves: number[];
 };
 
-const BASE = "http://localhost:8000";
+const BASE = "http://127.0.0.1:8000";
 
-export async function newGame(
-    difficulty: Difficulty = "medium",
-    aiStarts: boolean = false
-): Promise<Game> {
-    const res = await fetch(`{BASE}/new_game`, {
-        method: "POST",
-        headers: {"Content=Type": "application/json"},
-        body: JSON.stringify({ difficulty, aiStarts })
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+export async function newGame(difficulty: Difficulty) {
+  const aiStarts = difficulty === "hard";
+  const res = await fetch(`${BASE}/new-game`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ difficulty, aiStarts }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return (await res.json()) as Game;
 }
 
-export async function makeMove(
-    board: number[][],
-    column: number,
-    difficulty: Difficulty = "medium"
-): Promise<Game> {
-        const res = await fetch(`{BASE}/move`, {
-        method: "POST",
-        headers: {"Content=Type": "application/json"},
-        body: JSON.stringify({ board, column, difficulty })
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+export async function makeMove(board: number[][], column: number, difficulty: Difficulty) {
+  const res = await fetch(`${BASE}/move`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ board, column, difficulty }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return (await res.json()) as Game;
 }

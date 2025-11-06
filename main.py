@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Literal, List, Optional
 import numpy as np
@@ -250,11 +251,25 @@ class StateResponse(BaseModel):
 ### ENDPOINTS ###
 app = FastAPI()
 
+# CORS — include both localhost and 127.0.0.1 to be safe
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,      # or ["*"] during local dev
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # initialize game board
-@app.post("/games", response_model=StateResponse)
+@app.post("/new-game", response_model=StateResponse)
 def create_game(req: NewGameRequest):
     board = create_board()
-    move = Optional[int] = None # type: ignore
+    move: Optional[int] = None # type: ignore
 
     depth = DIFFICULTY_SETTINGS[req.difficulty]['depth']
     use_strategy = DIFFICULTY_SETTINGS[req.difficulty]['use_strategy']
@@ -270,6 +285,8 @@ def create_game(req: NewGameRequest):
     w = winner(board)
     over = game_over(board)
 
+    print(board)
+
     return StateResponse(
         board=board.tolist(),
         turn="player",
@@ -280,7 +297,7 @@ def create_game(req: NewGameRequest):
     ) 
 
 # update board
-@app.post("/update", response_model=StateResponse)
+@app.post("/move", response_model=StateResponse)
 def update_game(req: MoveRequest):
     board = np.array(req.board, dtype="int")
     
