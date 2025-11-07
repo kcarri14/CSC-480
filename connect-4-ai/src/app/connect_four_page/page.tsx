@@ -7,6 +7,8 @@ import { useSearchParams } from "next/navigation";
 import type { Difficulty, Game } from "@/lib/api";
 import { newGame, makeMove } from "@/lib/api";
 import ConnectFourSquare from "@/components/ConnectFourSquare";
+import Link from "next/link";
+
 
 const ROWS = 6;
 const COLS = 7;
@@ -19,6 +21,12 @@ function getStatusText(s: Game): string {
   }
   return s.turn === "player" ? "Your turn" : "AI is thinking...";
 }
+
+const handleReload = () => {
+  window.location.reload();
+}
+
+
 
 export default function ConnectFourPage() {
   // get difficulty level from url
@@ -85,6 +93,14 @@ export default function ConnectFourPage() {
             />
           ))
         )}
+      </div>
+      <div className="centered">
+      <button type="button" onClick={handleReload} className="button">
+      Restart Game
+    </button>
+      </div>
+      <div className="centered">
+      <Link href={"/home_page"}>Back to Home</Link>
       </div>
     </div>
   );
