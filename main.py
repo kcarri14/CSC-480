@@ -27,7 +27,7 @@ DIFFICULTY_SETTINGS = {
         'ai_first': False,
     },
     'hard': {
-        'depth': 7,
+        'depth': 6,
         'use_strategy': True,
         'check_immediate': True,
         'ai_first': True,
