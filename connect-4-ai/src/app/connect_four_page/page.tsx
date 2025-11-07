@@ -19,7 +19,7 @@ function getStatusText(s: Game): string {
     if (s.winner === -1) return "You win!";
     return "Draw!";
   }
-  return s.turn === "player" ? "Your turn" : "AI is thinking...";
+  return "Play!";
 }
 
 const handleReload = () => {
