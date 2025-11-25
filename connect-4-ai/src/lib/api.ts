@@ -5,6 +5,7 @@ export type Game = {
     turn: "player" | "ai";
     over: boolean;
     winner: 1 | -1 | null;
+    winning_pieces: number[][];
     aiMove?: number | null;
     legalMoves: number[];
 };
