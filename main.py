@@ -247,9 +247,13 @@ class NewGameRequest(BaseModel):
     difficulty: Difficulty = "medium"
     aiStarts: bool = False
 
-class MoveRequest(BaseModel):
+class UpdateRequest(BaseModel):
     board: List[List[int]]
     column: int = Field(ge=0, le=6)
+    difficulty: Difficulty = "medium"
+
+class MoveRequest(BaseModel):
+    board: List[List[int]]
     difficulty: Difficulty = "medium"
 
 class StateResponse(BaseModel):
@@ -310,29 +314,32 @@ def create_game(req: NewGameRequest):
         legalMoves=get_possible_moves(board),
     ) 
 
-# update board
-@app.post("/move", response_model=StateResponse)
-def update_game(req: MoveRequest):
+# apply player move
+@app.post("/update-board", response_model=StateResponse)
+def update_board(req: UpdateRequest):
     board = np.array(req.board, dtype="int")
-    
-    # check player's move
+
     if not is_valid_location(board, req.column):
-        raise HTTPException(status_code=400, detail="Invalid or full column")
+        raise HTTPException(status_code=400, detail="Column is full, pick a different one.")
     board = apply_move(board, req.column, PLAYER_PIECE)
 
     w, pieces = winner(board)
-    if w:
-        print(pieces)
-    if w is not None or not is_moves_left(board):
-        return StateResponse(
-            board=board.tolist(),
-            turn="ai",
-            over=True,
-            winner=w,
-            winning_pieces=pieces,
-            aiMove=None,
-            legalMoves=[],
-        )
+    over = game_over(board)
+
+    return StateResponse(
+        board=board.tolist(),
+        turn="ai",
+        over=over,
+        winner=w,
+        winning_pieces=pieces,
+        aiMove=None,
+        legalMoves=get_possible_moves(board)
+    )
+
+# apply ai move
+@app.post("/make-move", response_model=StateResponse)
+def make_move(req: MoveRequest):
+    board = np.array(req.board, dtype="int")
 
     depth = DIFFICULTY_SETTINGS[req.difficulty]['depth']
     use_strategy = DIFFICULTY_SETTINGS[req.difficulty]['use_strategy']
@@ -343,9 +350,8 @@ def update_game(req: MoveRequest):
         board = apply_move(board, move, AI_PIECE)
 
     w, pieces = winner(board)
-    if w:
-        print(pieces)
     over = game_over(board)
+
     return StateResponse(
         board=board.tolist(),
         turn="player",
