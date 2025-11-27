@@ -1,4 +1,3 @@
-// src/app/connect_four_page/page.tsx
 "use client";
 
 import "@/app/connect_four_page/connect_four.css";
@@ -40,10 +39,20 @@ export default function ConnectFourPage() {
   const [game, setGame] = useState<Game | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // disable clicking for columns
   const canClick = useMemo(
     () => !!game && !game.over && game.turn === "player" && !loading,
     [game, loading]
   );
+
+  // highlight winning pieces
+  const winningPieces = useMemo(() => {
+    if (!game || !game.winning_pieces?.length) return new Set<string>();
+    return new Set(
+      game.winning_pieces.map(([r, c]) => `${r}-${c}`)
+    );
+  }, [game?.winning_pieces]);
+
 
   // Create a new game on mount / difficulty change
   useEffect(() => {
@@ -83,21 +92,24 @@ export default function ConnectFourPage() {
       <p className="game-status">{getStatusText(game)}</p>
       <div className="board">
         {board.map((row, rIdx) =>
-
-          row.map((value, cIdx) => (
-            <ConnectFourSquare
-              key={`${rIdx}-${cIdx}`}
-              value={value} // 0 / -1 / 1
-              onClick={() => handleTurn(cIdx)}
-              disabled={!canClick || !game.legalMoves.includes(cIdx)}
-            />
-          ))
+          row.map((value, cIdx) => {
+            const isWinning = winningPieces.has(`${rIdx}-${cIdx}`);
+            return (
+              <ConnectFourSquare
+                key={`${rIdx}-${cIdx}`}
+                value={value} // 0 / -1 / 1
+                onClick={() => handleTurn(cIdx)}
+                disabled={!canClick || !game.legalMoves.includes(cIdx)}
+                isWinning={isWinning}
+              />
+            );
+          })
         )}
       </div>
       <div className="centered">
       <button type="button" onClick={handleReload} className="button">
-      Restart Game
-    </button>
+        Restart Game
+      </button>
       </div>
       <div className="centered">
       <Link href={"/home_page"}>Back to Home</Link>

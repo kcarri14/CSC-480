@@ -181,12 +181,12 @@ def pick_best_move(board, depth, use_strategy=True, check_immediate=True):
         return None, -math.inf
 
     if check_immediate:
-        for c in get_possible_moves(board):
-            status = detect_win(apply_move(board, c, AI_PIECE), AI_PIECE)
+        for c in moves:
+            status, _ = detect_win(apply_move(board, c, AI_PIECE), AI_PIECE)
             if status:
                 return c, +1_000_000_000
-        for c in get_possible_moves(board):
-            status = detect_win(apply_move(board, c, PLAYER_PIECE), PLAYER_PIECE)
+        for c in moves:
+            status, _  = detect_win(apply_move(board, c, PLAYER_PIECE), PLAYER_PIECE)
             if status:
                 return c, +999_999  
 
