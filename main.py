@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from typing import Literal, List, Optional
+from typing import Literal, List, Optional, Tuple
 import numpy as np
 import random
 import math
@@ -61,35 +61,41 @@ def apply_move(board, col, piece):
             return new_board
     return new_board
         
-# returns true if there are 4 pieces in a row
+# returns true if there are 4 pieces in a row along with a list of coordinates, false and empty list otherwise
 def detect_win(board, piece):
     # horizontal
     for r in range(ROW_COUNT):
         for c in range(COL_COUNT - 3):
             if board[r][c] == board[r][c+1] == board[r][c+2] == board[r][c+3] == piece:
-                return True
+                winning_pieces = [(r,c), (r, c+1), (r, c+2), (r, c+3)]
+                return True, winning_pieces
     # vertical
     for c in range(COL_COUNT):
         for r in range(ROW_COUNT - 3):
             if board[r][c] == board[r+1][c] == board[r+2][c] == board[r+3][c] == piece:
-                return True
+                winning_pieces = [(r,c), (r+1, c), (r+2, c), (r+3, c)]
+                return True, winning_pieces
     # diagonal up-right (/)
     for r in range(ROW_COUNT - 3):
         for c in range(COL_COUNT - 3):
             if board[r][c] == board[r+1][c+1] == board[r+2][c+2] == board[r+3][c+3] == piece:
-                return True
+                winning_pieces = [(r,c), (r+1, c+1), (r+2, c+2), (r+3, c+3)]
+                return True, winning_pieces
     # diagonal down-right (\)
     for r in range(3, ROW_COUNT):
         for c in range(COL_COUNT - 3):
             if board[r][c] == board[r-1][c+1] == board[r-2][c+2] == board[r-3][c+3] == piece:
-                return True
-    return False
+                winning_pieces = [(r,c), (r-1, c+1), (r-2, c+2), (r-3, c+3)]
+                return True, winning_pieces
+    return False, []
 
 # utility funciton (simple)
 def evaluate_state_simple(board):
-    if detect_win(board, AI_PIECE):
+    status, _ = detect_win(board, AI_PIECE)
+    if status:
         return 10000
-    if detect_win(board, PLAYER_PIECE):
+    status, _ = detect_win(board, PLAYER_PIECE)
+    if status:
         return -10000
     return 0
 
@@ -161,7 +167,9 @@ def evaluate_window(window, piece):
     
 # returns true if in a terminal state
 def game_over(board):
-    return detect_win(board, AI_PIECE) or detect_win(board, PLAYER_PIECE) or not is_moves_left(board)
+    ai_won, _ = detect_win(board, AI_PIECE)
+    player_won, _ = detect_win(board, PLAYER_PIECE)
+    return ai_won or player_won or not is_moves_left(board)
       
 # returns best move and score using minimax algo
 def pick_best_move(board, depth, use_strategy=True, check_immediate=True):
@@ -173,11 +181,13 @@ def pick_best_move(board, depth, use_strategy=True, check_immediate=True):
         return None, -math.inf
 
     if check_immediate:
-        for c in get_possible_moves(board):
-            if detect_win(apply_move(board, c, AI_PIECE), AI_PIECE):
+        for c in moves:
+            status, _ = detect_win(apply_move(board, c, AI_PIECE), AI_PIECE)
+            if status:
                 return c, +1_000_000_000
-        for c in get_possible_moves(board):
-            if detect_win(apply_move(board, c, PLAYER_PIECE), PLAYER_PIECE):
+        for c in moves:
+            status, _  = detect_win(apply_move(board, c, PLAYER_PIECE), PLAYER_PIECE)
+            if status:
                 return c, +999_999  
 
     for move in moves:
@@ -191,13 +201,15 @@ def pick_best_move(board, depth, use_strategy=True, check_immediate=True):
 
     return best_move, best_value
 
-# returns piece that won, or None if draw
+# returns piece that won and list of coordinates, or None if draw
 def winner(board):
-    if detect_win(board, AI_PIECE):
-        return AI_PIECE
-    if detect_win(board, PLAYER_PIECE):
-        return PLAYER_PIECE
-    return None
+    status, winning_pieces = detect_win(board, AI_PIECE)
+    if status:
+        return AI_PIECE, winning_pieces
+    status, winning_pieces = detect_win(board, PLAYER_PIECE)
+    if status:
+        return PLAYER_PIECE, winning_pieces
+    return None, []
 
 # returns best score using minimax with alpha beta pruning
 def minimax_alpha_beta(state, depth, alpha, beta, is_maximizing, player, use_strategy=True):
@@ -235,9 +247,13 @@ class NewGameRequest(BaseModel):
     difficulty: Difficulty = "medium"
     aiStarts: bool = False
 
-class MoveRequest(BaseModel):
+class UpdateRequest(BaseModel):
     board: List[List[int]]
     column: int = Field(ge=0, le=6)
+    difficulty: Difficulty = "medium"
+
+class MoveRequest(BaseModel):
+    board: List[List[int]]
     difficulty: Difficulty = "medium"
 
 class StateResponse(BaseModel):
@@ -245,13 +261,14 @@ class StateResponse(BaseModel):
     turn: Literal["player", "ai"]
     over: bool
     winner: Optional[int]          
+    winning_pieces: List[Tuple[int, int]]
     aiMove: Optional[int] = None
     legalMoves: List[int]
 
 ### ENDPOINTS ###
 app = FastAPI()
 
-# CORS — include both localhost and 127.0.0.1 to be safe
+# CORS
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
@@ -259,7 +276,7 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,      # or ["*"] during local dev
+    allow_origins=origins,      
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -282,7 +299,7 @@ def create_game(req: NewGameRequest):
             board = apply_move(board, c, AI_PIECE)
             move = c
 
-    w = winner(board)
+    w, pieces = winner(board)
     over = game_over(board)
 
     print(board)
@@ -292,30 +309,37 @@ def create_game(req: NewGameRequest):
         turn="player",
         over=over,
         winner=w,
+        winning_pieces=pieces,
         aiMove=move,
         legalMoves=get_possible_moves(board),
     ) 
 
-# update board
-@app.post("/move", response_model=StateResponse)
-def update_game(req: MoveRequest):
+# apply player move
+@app.post("/update-board", response_model=StateResponse)
+def update_board(req: UpdateRequest):
     board = np.array(req.board, dtype="int")
-    
-    # check player's move
+
     if not is_valid_location(board, req.column):
-        raise HTTPException(status_code=400, detail="Invalid or full column")
+        raise HTTPException(status_code=400, detail="Column is full, pick a different one.")
     board = apply_move(board, req.column, PLAYER_PIECE)
 
-    w = winner(board)
-    if w is not None or not is_moves_left(board):
-        return StateResponse(
-            board=board.tolist(),
-            turn="ai",
-            over=True,
-            winner=w,
-            aiMove=None,
-            legalMoves=[],
-        )
+    w, pieces = winner(board)
+    over = game_over(board)
+
+    return StateResponse(
+        board=board.tolist(),
+        turn="ai",
+        over=over,
+        winner=w,
+        winning_pieces=pieces,
+        aiMove=None,
+        legalMoves=get_possible_moves(board)
+    )
+
+# apply ai move
+@app.post("/make-move", response_model=StateResponse)
+def make_move(req: MoveRequest):
+    board = np.array(req.board, dtype="int")
 
     depth = DIFFICULTY_SETTINGS[req.difficulty]['depth']
     use_strategy = DIFFICULTY_SETTINGS[req.difficulty]['use_strategy']
@@ -325,13 +349,15 @@ def update_game(req: MoveRequest):
     if move is not None:
         board = apply_move(board, move, AI_PIECE)
 
-    w = winner(board)
+    w, pieces = winner(board)
     over = game_over(board)
+
     return StateResponse(
         board=board.tolist(),
         turn="player",
         over=over,
         winner=w,
+        winning_pieces=pieces,
         aiMove=move,
         legalMoves=get_possible_moves(board)
     )

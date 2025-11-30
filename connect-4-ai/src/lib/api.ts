@@ -5,6 +5,7 @@ export type Game = {
     turn: "player" | "ai";
     over: boolean;
     winner: 1 | -1 | null;
+    winning_pieces: number[][];
     aiMove?: number | null;
     legalMoves: number[];
 };
@@ -22,11 +23,21 @@ export async function newGame(difficulty: Difficulty) {
   return (await res.json()) as Game;
 }
 
-export async function makeMove(board: number[][], column: number, difficulty: Difficulty) {
-  const res = await fetch(`${BASE}/move`, {
+export async function updateBoard(board: number[][], column: number, difficulty: Difficulty) {
+  const res = await fetch(`${BASE}/update-board`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ board, column, difficulty }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return (await res.json()) as Game;
+}
+
+export async function makeMove(board: number[][], difficulty: Difficulty) {
+  const res = await fetch(`${BASE}/make-move`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ board, difficulty }),
   });
   if (!res.ok) throw new Error(await res.text());
   return (await res.json()) as Game;
