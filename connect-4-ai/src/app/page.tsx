@@ -1,5 +1,5 @@
 "use client";
-import "@/app/home_page/home_page.css"
+import "@/app/home_page.css"
 import { useRouter } from "next/navigation";
 import { useState} from "react";
 export default function Home() {
