@@ -78,3 +78,24 @@ body {
   display: grid;
   place-items: center;
 }
+
+.stat-text{
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 10px;
+}
+
+.stat-text-player{
+  position: absolute;
+  top: 20;
+  right: 20;
+  padding: 10px;
+}
+
+.stat-text-ai{
+  position: absolute;
+  top: 40;
+  right: 20;
+  padding: 10px;
+}

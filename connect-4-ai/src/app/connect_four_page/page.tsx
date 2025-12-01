@@ -9,9 +9,15 @@ import ConnectFourSquare from "@/components/ConnectFourSquare";
 import Link from "next/link";
 
 type Status = "idle" | "thinking";
+type Winner = 1 | -1;
 
 const ROWS = 6;
 const COLS = 7;
+
+type Stats = {
+  playerWins: number;
+  aiWins: number;
+};
 
 function getStatusText(g: Game, status: Status): string {
   if (g.over) {
@@ -24,11 +30,15 @@ function getStatusText(g: Game, status: Status): string {
   return g.turn === "player" ? "Your turn" : "Ai is thinking...";
 }
 
-const handleReload = () => {
-  window.location.reload();
-}
+
 
 export default function ConnectFourPage() {
+
+  const [stats, setStats] = useState<Stats>({
+    playerWins: 0,
+    aiWins: 0,
+  });
+  
   // get difficulty level from url
   const params = useSearchParams();
   const difficulty = (params.get("difficulty") ?? "medium") as Difficulty;
@@ -55,6 +65,24 @@ export default function ConnectFourPage() {
     );
   }, [game?.winning_pieces]);
 
+  function updateStatsForWinner(g : Game) {
+    if (!g.over) return;
+
+    setStats(prev => {
+      if (g.winner === 1) {
+        // AI wins
+        return { ...prev, aiWins: prev.aiWins + 1 };
+      }
+      if (g.winner === -1) {
+        // Player wins
+        return { ...prev, playerWins: prev.playerWins + 1 };
+      }
+      // draw: no change
+      return prev;
+    });
+  }
+  
+
 
   // Create a new game on mount / difficulty change
   useEffect(() => {
@@ -79,6 +107,9 @@ export default function ConnectFourPage() {
       setGame(updatedGame);
 
       if (updatedGame.over) {
+        if (updatedGame.winner === 1 || updatedGame.winner === -1) {
+          updateStatsForWinner(updatedGame);
+        }
         setStatus("idle")
         return;
       }
@@ -86,6 +117,24 @@ export default function ConnectFourPage() {
       const aiMove = await makeMove(updatedGame.board, difficulty);
       setBoard(aiMove.board);
       setGame(aiMove);
+      if (aiMove.over) {
+        if (aiMove.winner === 1 || aiMove.winner === -1) {
+          updateStatsForWinner(aiMove);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      alert(String(e));
+    } finally {
+      setStatus("idle");
+    }
+  }
+  async function handleRestart() {
+    setStatus("thinking");
+    try {
+      const g = await newGame(difficulty);
+      setGame(g);
+      setBoard(g.board);
     } catch (e) {
       console.error(e);
       alert(String(e));
@@ -98,6 +147,9 @@ export default function ConnectFourPage() {
 
   return (
     <div>
+      <div className = "stat-text">Game Stats </div>
+      <div className = "stat-text-player">Player: {stats.playerWins} </div>
+      <div className = "stat-text-ai">AI: {stats.aiWins} </div>
       <h1 className="game-title">Connect 4</h1>
       <p className="game-level">Game Difficulty: {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}</p>
       <p className="game-status">{getStatusText(game, status)}</p>
@@ -118,12 +170,12 @@ export default function ConnectFourPage() {
         )}
       </div>
       <div className="centered">
-      <button type="button" onClick={handleReload} className="button">
+      <button type="button" onClick={handleRestart} className="button">
         Restart Game
       </button>
       </div>
       <div className="centered">
-      <Link href={"/home_page"}>Back to Home</Link>
+      <Link href={"/"}>Back to Home</Link>
       </div>
     </div>
   );
