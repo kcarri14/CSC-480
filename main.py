@@ -172,27 +172,29 @@ def game_over(board):
     return ai_won or player_won or not is_moves_left(board)
       
 # returns best move and score using minimax algo
-def pick_best_move(board, depth, use_strategy=True, check_immediate=True):
+def pick_best_move(board, depth, max_piece=AI_PIECE, use_strategy=True, check_immediate=True):
     alpha, beta = -math.inf, math.inf
     best_move, best_value = None, -math.inf
 
     moves = get_possible_moves(board)
     if not moves:
         return None, -math.inf
+    
+    opp_piece = -max_piece
 
     if check_immediate:
         for c in moves:
-            status, _ = detect_win(apply_move(board, c, AI_PIECE), AI_PIECE)
+            status, _ = detect_win(apply_move(board, c, max_piece), max_piece)
             if status:
                 return c, +1_000_000_000
         for c in moves:
-            status, _  = detect_win(apply_move(board, c, PLAYER_PIECE), PLAYER_PIECE)
+            status, _  = detect_win(apply_move(board, c, opp_piece), opp_piece)
             if status:
                 return c, +999_999  
 
     for move in moves:
-        child = apply_move(board, move, AI_PIECE)
-        val = minimax_alpha_beta(child, depth - 1, alpha, beta, False, AI_PIECE, use_strategy)
+        child = apply_move(board, move, max_piece)
+        val = minimax_alpha_beta(child, depth - 1, alpha, beta, False, max_piece, use_strategy)
         if val > best_value:
             best_value, best_move = val, move
         alpha = max(alpha, best_value)
@@ -212,33 +214,36 @@ def winner(board):
     return None, []
 
 # returns best score using minimax with alpha beta pruning
-def minimax_alpha_beta(state, depth, alpha, beta, is_maximizing, player, use_strategy=True):
-      if depth == 0 or not is_moves_left(state):
+def minimax_alpha_beta(state, depth, alpha, beta, is_maximizing, player, use_strategy=True, max_piece=AI_PIECE):
+    if depth == 0 or not is_moves_left(state):
         if use_strategy:
             return evaluate_state_hard(state, player)
         else:
             return evaluate_state_simple(state)
+        
+    opp_piece = -max_piece
+    best_score = -math.inf if is_maximizing else math.inf
       
-      if is_maximizing:
-          best_score = -float('inf')
-          for move in get_possible_moves(state):
-              new_state = apply_move(state, move, AI_PIECE)
-              score = minimax_alpha_beta(new_state, depth-1, alpha, beta, False, player, use_strategy)
-              best_score = max(score, best_score)
-              alpha = max(alpha, best_score)
-              if beta <= alpha:
-                  break  # Beta cutoff
-          return best_score
-      else:
-          best_score = float('inf')
-          for move in get_possible_moves(state):
-              new_state = apply_move(state, move, PLAYER_PIECE)
-              score = minimax_alpha_beta(new_state, depth-1, alpha, beta, True, player, use_strategy)
-              best_score = min(score, best_score)
-              beta = min(beta, best_score)
-              if beta <= alpha:
-                  break  # Alpha cutoff
-          return best_score
+    if is_maximizing:
+        best_score = -float('inf')
+        for move in get_possible_moves(state):
+            new_state = apply_move(state, move, max_piece)
+            score = minimax_alpha_beta(new_state, depth-1, alpha, beta, False, player, use_strategy)
+            best_score = max(score, best_score)
+            alpha = max(alpha, best_score)
+            if beta <= alpha:
+                break  # Beta cutoff
+        return best_score
+    else:
+        best_score = float('inf')
+        for move in get_possible_moves(state):
+            new_state = apply_move(state, move, opp_piece)
+            score = minimax_alpha_beta(new_state, depth-1, alpha, beta, not is_maximizing, player, use_strategy)
+            best_score = min(score, best_score)
+            beta = min(beta, best_score)
+            if beta <= alpha:
+                break  # Alpha cutoff
+        return best_score
       
 ### SCHEMAS ###
 Difficulty = Literal["easy", "medium", "hard"]
