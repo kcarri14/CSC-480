@@ -1,4 +1,4 @@
-# CSC 480 Porject: Connect 4 AI
+# CSC 480 Project: Connect 4 AI
 
 ## Set Up
 - Make a new python virtual environment and activate it (optional)
