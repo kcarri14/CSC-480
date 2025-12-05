@@ -324,6 +324,9 @@ def create_game(req: NewGameRequest):
 def update_board(req: UpdateRequest):
     board = np.array(req.board, dtype="int")
 
+    if board.shape != (ROW_COUNT, COL_COUNT):
+        raise HTTPException(status_code=400, detail=f"Invalid board shape {board.shape}, expected{(ROW_COUNT, COL_COUNT)}")
+
     if not is_valid_location(board, req.column):
         raise HTTPException(status_code=400, detail="Column is full, pick a different one.")
     board = apply_move(board, req.column, PLAYER_PIECE)
@@ -345,6 +348,10 @@ def update_board(req: UpdateRequest):
 @app.post("/make-move", response_model=StateResponse)
 def make_move(req: MoveRequest):
     board = np.array(req.board, dtype="int")
+    print(board.shape)
+
+    if board.shape != (ROW_COUNT, COL_COUNT):
+        raise HTTPException(status_code=400, detail=f"Invalid board shape {board.shape}, expected{(ROW_COUNT, COL_COUNT)}")
 
     depth = DIFFICULTY_SETTINGS[req.difficulty]['depth']
     use_strategy = DIFFICULTY_SETTINGS[req.difficulty]['use_strategy']

@@ -1,6 +1,8 @@
 import random
 import numpy as np
 import pytest
+from fastapi import HTTPException
+from fastapi.testclient import TestClient
 from main import (
     create_board,
     apply_move,
@@ -9,7 +11,10 @@ from main import (
     game_over,
     winner,
     detect_win,
+    app,
 )
+
+client = TestClient(app)
 
 # unit tests
 def test_apply_move():
@@ -81,8 +86,103 @@ def test_block_win_easy():
     for i in [0,1,2]:
         board = apply_move(board, i, -1)
     
-    move, score = pick_best_move(board, depth=3, max_piece=1, use_strategy=False, check_immediate=False)
+    move, _ = pick_best_move(board, depth=3, max_piece=1, use_strategy=False, check_immediate=False)
     assert move == 3
+
+def test_game_over():
+    board = create_board()
+    for r in range(6):
+        for c in range(7):
+            piece = 1 if r % 2 == 0 else -1
+            board = apply_move(board, c, piece)
+    
+    over = game_over(board)
+    assert over == True
+
+    moves = get_possible_moves(board)
+    assert len(moves) == 0
+
+
+def test_full_board():
+    board = create_board()
+    for c in range(7):
+        if c == 3:
+            continue # skip col 3
+        for r in range(6):
+            piece = 1 if r % 2 == 0 else -1
+            board = apply_move(board, c, piece)
+
+    possible = get_possible_moves(board)
+    assert possible == [3]
+
+def test_win_over_block():
+    board = create_board()
+    for r in range(3):
+        board = apply_move(board, 0, 1)
+        board = apply_move(board, 1, -1)
+
+    move, _ = pick_best_move(board, depth=5, max_piece = 1, use_strategy=True, check_immediate=True)
+    assert move == 0
+
+    board = apply_move(board, move, 1)
+    win, _ = detect_win(board, 1)
+    assert win is True
+
+# client tests
+def test_invalid_move_small():
+    board = create_board().tolist()
+
+    req = {
+        "board": board,
+        "column": -1,
+        "difficulty": "medium",
+    }
+
+    resp = client.post("/update-board", json=req)
+    assert resp.status_code == 422
+
+def test_raise_exception():
+    board = create_board()
+    for i in range(6):
+        board = apply_move(board, 0, 1)
+    board = board.tolist()
+    req = {
+        "board": board,
+        "column": 0,
+        "difficulty": "easy",
+    }
+
+    resp = client.post("/update-board", json=req)
+    assert resp.status_code == 400
+
+
+def test_invalid_move_large():
+    board = create_board().tolist()
+
+    req = {
+        "board": board,
+        "column": 7,
+        "difficulty": "medium",
+    }
+
+    resp = client.post("/update-board", json=req)
+    assert resp.status_code == 422
+
+def test_invalid_board():
+    board = [[0,0,0,0,0,0],
+             [0,0,0,0,0,0],
+             [0,0,0,0,0,0],
+             [0,0,0,0,0,0],
+             [0,0,0,0,0,0],
+             [0,0,0,0,0,0],
+             [0,0,0,0,0,0]]
+    req = {
+        "board": board,
+        "difficulty": "medium"
+    }
+
+    resp = client.post("/make-move", json=req)
+    assert resp.status_code == 400
 
 # game simulations
 # randomly chooses a valid column to play
